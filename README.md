@@ -12,11 +12,14 @@ Ready to run in production? Please [check our deployment guides](https://hexdocs
 
 ## nginx
 
-SSL is difficult, and we use nginx in the live environments so we use nginx in development for the correct SSL client certificate behavior. The nginx configuration template is partially copied from the configuration used in deploy environments.
+SSL is difficult, and we use nginx in the live environments so we use nginx in
+development for the correct SSL client certificate behavior. The nginx
+configuration template is partially copied from the configuration used in
+deployed environments.
 
 1. Generate self-signed certs with `mix phx.gen.cert`
 2. Install nginx (`brew install nginx`)
-3. Copy nginx config and edit the new file with your local paths: `cp priv/nginx/nginx_server.conf.example priv/nginx/nginx_server.conf`
+3. Copy nginx config and edit the new file with your local paths: `cp priv/nginx/nginx_server.conf{.example,}`
 4. Verify config and start nginx
 
 Verify nginx:
@@ -32,5 +35,5 @@ Start nginx:
 
 ```sh
 # full path is needed
-nginx -t -c /Users/USERNAME/projects/identity_pki/priv/nginx/nginx_server.conf
+nginx -c /Users/USERNAME/projects/identity_pki/priv/nginx/nginx_server.conf
 ```
