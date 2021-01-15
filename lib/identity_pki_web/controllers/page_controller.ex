@@ -5,6 +5,10 @@ defmodule IdentityPkiWeb.PageController do
     referrer_uri = referrer(conn, params)
     referrer = %{referrer_uri | query: "token=1234"}
 
+    [cert] = Plug.Conn.get_req_header(conn, "x-client-cert")
+
+    cert = URI.decode(cert)
+
     redirect(conn, external: URI.to_string(referrer))
   end
 
