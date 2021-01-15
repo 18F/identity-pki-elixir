@@ -12,6 +12,11 @@ Ready to run in production? Please [check our deployment guides](https://hexdocs
 
 ## nginx
 
+1. Generate self-signed certs with `mix phx.gen.cert`
+2. Install nginx
+3. Edit `priv/nginx/nginx_server.conf` so the absolute paths are correct
+4. Start nginx
+
 SSL is difficult, and we use nginx in the live environments so copied configuration from there and cobbled the rest together. We can generate self-signed certificate with `mix phx.gen.cert` and use it in our nginx config.
 
 Development nginx config:
