@@ -27,3 +27,4 @@ identity_pki-*.tar
 # this depending on your deployment strategy.
 /priv/static/
 /priv/cert/
+/priv/nginx/ngninx_server.conf
