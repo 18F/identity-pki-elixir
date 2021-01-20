@@ -1,4 +1,39 @@
 defmodule IdentityPki.Certificate do
+
+  # cert
+  # |> Certificate.validate_leaf
+  # |> Certificate.token
+
+  # pass through a tuple of either {:ok, cert} or {:error, message} and cascade
+  # the message or run the next check
+  #
+  # Look into the order we want to run this in
+  def validate_leaf do
+    self
+    |> expired?
+    |> self_signed?
+    |> unverified_signature? # fetch signing cert and validate_non_leaf
+    |> revoked?
+    |> bad_policy?
+  end
+
+  def validate_non_leaf do
+    self
+    |> expired?
+    |> trusted_root?
+    |> self_signed?
+    |> unverified_signature?
+    |> revoked?
+  end
+
+  def token({:ok, cert}) do
+
+  end
+
+  def token({:error, error}) do
+
+  end
+
   def token(pem_cert_string) do
     x509 = X509.Certificate.from_pem!(pem_cert_string)
   end

@@ -14,6 +14,12 @@ defmodule IdentityPkiWeb.PageController do
       URI.decode(cert)
       |> X509.Certificate.from_pem!()
 
+    token =
+      cert
+      |> Certificate.check_validity # all the way to the federal common policy
+                                    # {:ok, cert} or {:error, reason}
+      |> generate_token
+
     token = %{
       subject: Certificate.rfc_2253_subject(cert),
       issuer: Certificate.issuer(cert),
