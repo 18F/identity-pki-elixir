@@ -16,22 +16,21 @@ SSL is difficult, and we use nginx in the live environments so we use nginx in d
 
 1. Generate self-signed certs with `mix phx.gen.cert`
 2. Install nginx (`brew install nginx`)
-3. Copy nginx config and edit the new file with your local paths: `cp priv/nginx/nginx_server.conf.example priv/nginx/nginx_server`
+3. Copy nginx config and edit the new file with your local paths: `cp priv/nginx/nginx_server.conf.example priv/nginx/nginx_server.conf`
 4. Verify config and start nginx
 
 Verify nginx:
 
 ```sh
 # full path is needed
-nginx -t -c /Users/USERNAME/projects/identity_pki/priv/nginx/ngninx_server.conf
+nginx -t -c /Users/USERNAME/projects/identity_pki/priv/nginx/nginx_server.conf
 # syntax is ok
-# ngninx_server.conf test is successful
+# nginx_server.conf test is successful
 ```
 
 Start nginx:
 
 ```sh
 # full path is needed
-nginx -t -c /Users/USERNAME/projects/identity_pki/priv/nginx/ngninx_server.conf
+nginx -t -c /Users/USERNAME/projects/identity_pki/priv/nginx/nginx_server.conf
 ```
-
