@@ -28,3 +28,4 @@ identity_pki-*.tar
 /priv/static/
 /priv/cert/
 /priv/nginx/ngninx_server.conf
+/priv/nginx/nginx_server.conf
