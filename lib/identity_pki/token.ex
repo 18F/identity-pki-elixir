@@ -7,7 +7,11 @@ defmodule IdentityPki.Token do
       if expires_at do
         Map.put(data, :expires_at, expires_at)
       else
-        data
+        expires_at =
+          NaiveDateTime.utc_now()
+          |> NaiveDateTime.add(300, :second)
+
+        Map.put(data, :expires_at, expires_at)
       end
 
     json =
@@ -18,16 +22,35 @@ defmodule IdentityPki.Token do
     encrypt_text(json, key)
   end
 
+  @spec open(String.t(), String.t()) :: {:ok, Map.t()} | {:error, atom()}
   def open(token, key \\ secret_key()) do
-    # TODO: check expires_at
-    # TODO: check HMAC
-    [text, iv, tag] =
-      String.split(token, "--")
-      |> Enum.map(&Base.decode64!/1)
+    with [text, iv, tag] <- String.split(token, "--"),
+         {:ok, text} <- Base.decode64(text),
+         {:ok, iv} <- Base.decode64(iv),
+         {:ok, tag} <- Base.decode64(tag),
+         decrypted when is_binary(decrypted) <-
+           :crypto.crypto_one_time_aead(:aes_256_gcm, key, iv, text, "", tag, false),
+         {:ok, json} <- Jason.decode(decrypted),
+         false <- expired_token?(json) do
+      {:ok, Map.drop(json, ["r1", "r2", "expires_at"])}
+    else
+      _ ->
+        {:error, :failed_to_decrypt}
+    end
+  end
 
-    :crypto.crypto_one_time_aead(:aes_256_gcm, key, iv, text, "", tag, false)
-    |> Jason.decode!()
-    |> Map.drop(["r1", "r2"])
+  @spec valid_hmac?(String.t(), String.t(), String.t()) :: boolean()
+  def valid_hmac?(token, hmac_header, verify_secret \\ secret_verify_key()) do
+    # "hmac #{user}:#{nonce}:#{digest}"
+    with true <- String.starts_with?(hmac_header, "hmac "),
+         [_user, nonce, hmac] <- String.split(hmac_header, ":"),
+         false <- nonce_seen?(nonce),
+         true <- build_hmac(token, nonce, verify_secret) == hmac do
+      true
+    else
+      _e ->
+        false
+    end
   end
 
   def encrypt_text(data, key) do
@@ -40,10 +63,43 @@ defmodule IdentityPki.Token do
     |> Enum.join("--")
   end
 
+  def nonce_seen?(_nonce) do
+    false
+  end
+
+  def build_hmac(token, nonce, verify_secret) do
+    data = Enum.join([token, nonce], "+")
+
+    :crypto.mac(:hmac, :sha256, verify_secret, data)
+    |> Base.url_encode64()
+  end
+
+  @spec expired_token?(Map.t()) :: boolean()
+  defp expired_token?(map) when not is_map_key(map, "expires_at") do
+    false
+  end
+
+  defp expired_token?(map) do
+    now = NaiveDateTime.utc_now()
+
+    with expires_at <- Map.fetch!(map, "expires_at"),
+         {:ok, date_time} <- NaiveDateTime.from_iso8601(expires_at),
+         :lt <- NaiveDateTime.compare(now, date_time) do
+      false
+    else
+      _ ->
+        true
+    end
+  end
+
   defp secret_key do
     salt = Application.get_env(:identity_pki, :token_encryption_key_salt)
     pepper = Application.get_env(:identity_pki, :token_encryption_key_pepper)
     Plug.Crypto.KeyGenerator.generate(pepper, salt, digest: :sha, iterations: 65_536)
+  end
+
+  defp secret_verify_key do
+    Application.get_env(:identity_pki, :verify_token_secret)
   end
 
   defp random_bytes(bytes) do
