@@ -7,12 +7,14 @@ defmodule IdentityPki.TokenTest do
     "a" => "b",
     "c" => 1
   }
+  @secret_key <<109, 186, 109, 204, 105, 247, 43, 210, 48, 152, 199, 233, 28, 52, 189, 242,
+    30, 231, 57, 214, 226, 20, 119, 196, 223, 163, 41, 150, 114, 143, 97, 46>>
 
   describe "box/open" do
     test "can decode an encoded token" do
-      encrypted = Token.box(@data)
+      encrypted = Token.box(@data, secret_key: @secret_key)
 
-      assert Token.open(encrypted) == {:ok, @data}
+      assert Token.open(encrypted, @secret_key) == {:ok, @data}
     end
 
     test "rejects expired token" do
@@ -20,9 +22,9 @@ defmodule IdentityPki.TokenTest do
         NaiveDateTime.utc_now()
         |> NaiveDateTime.add(-10, :second)
 
-      encrypted = Token.box(@data, expires_at: expires_at)
+      encrypted = Token.box(@data, expires_at: expires_at, secret_key: @secret_key)
 
-      assert Token.open(encrypted) == {:error, :failed_to_decrypt}
+      assert Token.open(encrypted, @secret_key) == {:error, :failed_to_decrypt}
     end
   end
 
