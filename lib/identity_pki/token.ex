@@ -1,17 +1,13 @@
 defmodule IdentityPki.Token do
   def box(data, opts \\ []) do
-    expires_at = Keyword.get(opts, :expires_at)
+    expires_at = Keyword.get(opts, :expires_at, &default_expires_at/0)
     key = Keyword.get_lazy(opts, :key, &secret_key/0)
 
     data =
       if expires_at do
         Map.put(data, :expires_at, expires_at)
       else
-        expires_at =
-          NaiveDateTime.utc_now()
-          |> NaiveDateTime.add(300, :second)
-
-        Map.put(data, :expires_at, expires_at)
+        data
       end
 
     json =
@@ -105,5 +101,10 @@ defmodule IdentityPki.Token do
   defp random_bytes(bytes) do
     :crypto.strong_rand_bytes(bytes)
     |> Base.encode64()
+  end
+
+  defp default_expires_at do
+    NaiveDateTime.utc_now()
+    |> NaiveDateTime.add(300, :second)
   end
 end
