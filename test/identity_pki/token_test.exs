@@ -42,7 +42,7 @@ defmodule IdentityPki.TokenTest do
       nonce = "ab"
       secret = "abcd"
       digest = Token.build_hmac(data, nonce, secret)
-      hmac_header = "hmac :#{nonce}:#{digest}1"
+      hmac_header = "hmac :#{nonce}:#{digest}"
       bad_data = "abcd"
 
       assert Token.valid_hmac?(bad_data, hmac_header, secret) == false
