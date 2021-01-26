@@ -31,12 +31,24 @@ defmodule IdentityPkiWeb.PageController do
   end
 
   def verify(conn, params) do
-    # hmac = request.headers['HTTP_AUTHENTICATION']
-    token = Map.get(params, "token")
-    json = IdentityPki.Token.open(token)
+    authentication_headers = Plug.Conn.get_req_header(conn, "authentication")
 
-    json(conn, json)
+    token = Map.get(params, "token")
+
+    with true <- valid_hmac?(token, authentication_headers),
+         {:ok, json} <- IdentityPki.Token.open(token) do
+      json(conn, json)
+    end
   end
+
+  # Since the same request header can appear multiple times, only match
+  # and attempt validation when there is only one value.
+  @spec valid_hmac?(String.t(), list(String.t())) :: boolean()
+  defp valid_hmac?(token, [authentication_header]) do
+    IdentityPki.Token.valid_hmac?(token, authentication_header)
+  end
+
+  defp valid_hmac?(_token, _auth_headers), do: false
 
   defp referrer(conn, params) do
     header_referrer =
