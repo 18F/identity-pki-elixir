@@ -41,13 +41,14 @@ defmodule IdentityPkiWeb.PageController do
     end
   end
 
-  defp valid_hmac?(_token, []), do: true
-
+  # Since the same request header can appear multiple times, only match
+  # and attempt validation when there is only one value.
+  @spec valid_hmac?(String.t(), list(String.t())) :: boolean()
   defp valid_hmac?(token, [authentication_header]) do
     IdentityPki.Token.valid_hmac?(token, authentication_header)
   end
 
-  defp valid_hmac?(_token, _multiple_auth_headers), do: false
+  defp valid_hmac?(_token, _auth_headers), do: false
 
   defp referrer(conn, params) do
     header_referrer =
