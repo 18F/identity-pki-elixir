@@ -3,35 +3,34 @@ defmodule IdentityPkiWeb.PageController do
   alias IdentityPki.{Certificate, PivCac}
 
   def identify(conn, params) do
-    referrer_uri = referrer(conn, params)
+    header_referer = Plug.Conn.get_req_header(conn, "referer")
+                     |> List.first()
+    params = Map.put_new(params, "redirect_uri", header_referer)
 
-    nonce = Map.get(params, "nonce")
+    with {:ok, params} <- IdentityPkiWeb.IdentifyValidator.index(params),
+         [cert_header] <- Plug.Conn.get_req_header(conn, "x-client-cert"),
+         {:ok, cert} <- process_cert(cert_header),
+         distinguished_name_signature <- Certificate.dn_signature(cert),
+         {:ok, piv} <- PivCac.find_or_create(distinguished_name_signature) do
+      token =
+        %{
+          subject: Certificate.rfc_2253_subject(cert),
+          issuer: Certificate.issuer(cert),
+          uuid: piv.uuid,
+          card_type: "piv",
+          auth_cert: Certificate.auth_cert?(cert),
+          nonce: params.nonce
+        }
+        |> IdentityPki.Token.box()
 
-    [cert] = Plug.Conn.get_req_header(conn, "x-client-cert")
+      query = URI.encode_query(%{token: token})
+      referrer = %{params.referrer | query: query}
 
-    cert =
-      URI.decode(cert)
-      |> X509.Certificate.from_pem!()
-
-    distinguished_name_signature = Certificate.dn_signature(cert)
-
-    {:ok, piv} = PivCac.find_or_create(distinguished_name_signature)
-
-    token =
-      %{
-        subject: Certificate.rfc_2253_subject(cert),
-        issuer: Certificate.issuer(cert),
-        uuid: piv.uuid,
-        card_type: "piv",
-        auth_cert: Certificate.auth_cert?(cert),
-        nonce: nonce
-      }
-      |> IdentityPki.Token.box()
-
-    query = URI.encode_query(%{token: token})
-    referrer = %{referrer_uri | query: query}
-
-    redirect(conn, external: URI.to_string(referrer))
+      redirect(conn, external: URI.to_string(referrer))
+    else
+      _ ->
+        text(conn, "")
+    end
   end
 
   def verify(conn, params) do
@@ -54,14 +53,8 @@ defmodule IdentityPkiWeb.PageController do
 
   defp valid_hmac?(_token, _auth_headers), do: false
 
-  defp referrer(conn, params) do
-    header_referrer =
-      Plug.Conn.get_req_header(conn, "referer")
-      |> List.first()
-
-    param_referrer = Map.get(params, "redirect_uri")
-    referrer = header_referrer || param_referrer
-
-    URI.parse(referrer)
+  defp process_cert(cert_header) do
+    URI.decode(cert_header)
+    |> X509.Certificate.from_pem
   end
 end
