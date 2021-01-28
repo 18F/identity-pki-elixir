@@ -1,13 +1,13 @@
 defmodule IdentityPki.Certificate do
-  def token(pem_cert_string) do
-    x509 = X509.Certificate.from_pem!(pem_cert_string)
-  end
+  @type t :: X509.Certificate.t()
 
+  @spec issuer(t()) :: String.t()
   def issuer(cert) do
     X509.Certificate.issuer(cert)
     |> X509.RDNSequence.to_string()
   end
 
+  @spec key_id(t()) :: String.t() | nil
   def key_id(cert) do
     case X509.Certificate.extension(cert, :subject_key_identifier) do
       # Key id is a binary and needs to be Base16 encoded
@@ -23,6 +23,7 @@ defmodule IdentityPki.Certificate do
     end
   end
 
+  @spec signing_key_id(t()) :: String.t() | nil
   def signing_key_id(cert) do
     case X509.Certificate.extension(cert, :authority_key_identifier) do
       # Key id is a binary and needs to be Base16 encoded
@@ -44,7 +45,7 @@ defmodule IdentityPki.Certificate do
   The digest is Base64 encoded, but a `"\n"` is added every 60 characters
   to match the behavior of Ruby's `Base64.encode64`
   """
-  @spec dn_signature(X509.Certificate.t()) :: String.t()
+  @spec dn_signature(t()) :: String.t()
   def dn_signature(cert) do
     subject = rfc_2253_subject(cert)
 
@@ -55,10 +56,15 @@ defmodule IdentityPki.Certificate do
     |> Enum.join("\n")
   end
 
+  @doc """
+  Checks if the cert has an extension with the "client authentication" OID
+  """
+  @spec auth_cert?(t()) :: boolean()
   def auth_cert?(cert) do
     not is_nil(X509.Certificate.extension(cert, {1, 3, 6, 1, 5, 2, 3, 4}))
   end
 
+  @spec rfc_2253_subject(t()) :: String.t()
   def rfc_2253_subject(cert) do
     {:rdnSequence, rdnSequence} = X509.Certificate.subject(cert)
 
@@ -76,6 +82,7 @@ defmodule IdentityPki.Certificate do
     |> Enum.join(",")
   end
 
+  @spec subject(t()) :: String.t()
   def subject(cert) do
     {:rdnSequence, rdnSequence} = X509.Certificate.subject(cert)
 
@@ -94,6 +101,7 @@ defmodule IdentityPki.Certificate do
     "/" <> subject
   end
 
+  @spec oid_to_string(tuple()) :: String.t()
   def oid_to_string({2, 5, 4, 3}), do: "CN"
   def oid_to_string({2, 5, 4, 6}), do: "C"
   def oid_to_string({2, 5, 4, 7}), do: "L"
