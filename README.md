@@ -10,6 +10,11 @@ Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
 
 Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
 
+## Database
+
+The database schema and migrations are maintained by https://github.com/18F/identity-pki. To
+set up the database, follow the instructions for project setup and database migrations there.
+
 ## nginx
 
 SSL is difficult, and we use nginx in the live environments so we use nginx in
