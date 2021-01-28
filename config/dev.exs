@@ -2,7 +2,7 @@ use Mix.Config
 
 # Configure your database
 config :identity_pki, IdentityPki.Repo,
-  database: "identity_pki_dev",
+  database: "identity_pki_development",
   hostname: "localhost",
   show_sensitive_data_on_connection_error: true,
   pool_size: 10

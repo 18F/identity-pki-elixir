@@ -38,6 +38,23 @@ defmodule IdentityPki.Certificate do
     end
   end
 
+  @doc """
+  SHA512 digests the RFC 2253 formatted subject of a certificate.
+
+  The digest is Base64 encoded, but a `"\n"` is added every 60 characters
+  to match the behavior of Ruby's `Base64.encode64`
+  """
+  @spec dn_signature(X509.Certificate.t()) :: String.t()
+  def dn_signature(cert) do
+    subject = rfc_2253_subject(cert)
+
+    :crypto.hash(:sha512, subject)
+    |> Base.encode64()
+    |> String.codepoints()
+    |> Enum.chunk_every(60)
+    |> Enum.join("\n")
+  end
+
   def auth_cert?(cert) do
     not is_nil(X509.Certificate.extension(cert, {1, 3, 6, 1, 5, 2, 3, 4}))
   end
