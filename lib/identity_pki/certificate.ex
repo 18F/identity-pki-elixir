@@ -39,6 +39,24 @@ defmodule IdentityPki.Certificate do
     end
   end
 
+  def validate_leaf_cert(cert) do
+    cert
+    # |> expired?
+    # |> self_signed?
+    # |> unverified_signature? # fetch signing cert and validate_non_leaf
+    # |> revoked?
+    # |> bad_policy?
+  end
+
+  def validate_non_leaf_cert(cert) do
+    cert
+    # |> expired?
+    # |> trusted_root?
+    # |> self_signed?
+    # |> unverified_signature?
+    # |> revoked?
+  end
+
   @doc """
   SHA512 digests the RFC 2253 formatted subject of a certificate.
 
