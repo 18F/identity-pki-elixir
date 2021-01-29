@@ -1,5 +1,5 @@
 defmodule IdentityPki.Certificate do
-  alias IdentityPki.CertificateStore
+  alias IdentityPki.{CertificateRevocation, CertificateStore}
 
   @type t :: X509.Certificate.t()
 
@@ -49,9 +49,6 @@ defmodule IdentityPki.Certificate do
   end
 
   def validate_certificate_chain(cert) do
-    rfc_2253_subject(cert)
-
-    # && not expired
     if CertificateStore.root_cert?(cert) do
       validate_root_cert(cert)
     else
@@ -79,6 +76,7 @@ defmodule IdentityPki.Certificate do
     with :ok <- expired?(cert),
          :ok <- self_signed?(cert),
          :ok <- not_root_cert?(cert),
+         :ok <- revoked?(cert),
          {:ok, signing_cert} <- verified_signature?(cert) do
       {:ok, signing_cert}
     else
@@ -93,6 +91,9 @@ defmodule IdentityPki.Certificate do
 
       {:error, :root_cert} ->
         "root cert"
+
+      {:error, :revoked} ->
+        "revoked"
     end
 
     # |> revoked?
@@ -102,6 +103,7 @@ defmodule IdentityPki.Certificate do
   def validate_non_leaf_cert(cert) do
     with :ok <- expired?(cert),
          :ok <- self_signed?(cert),
+         :ok <- revoked?(cert),
          {:ok, signing_cert} <- verified_signature?(cert) do
       {:ok, signing_cert}
     else
@@ -113,6 +115,9 @@ defmodule IdentityPki.Certificate do
 
       {:error, :unverified_signature} ->
         "unverified"
+
+      {:error, :revoked} ->
+        "revoked"
     end
 
     # |> trusted_root?
@@ -174,8 +179,12 @@ defmodule IdentityPki.Certificate do
   end
 
   @spec revoked?(t()) :: :ok | {:error, :revoked}
-  def revoked?(_cert) do
-    :ok
+  def revoked?(cert) do
+    if !CertificateRevocation.revoked?(cert) do
+      :ok
+    else
+      {:error, :revoked}
+    end
   end
 
   @spec bad_policy?(t()) :: :ok | {:error, :bad_policy}

@@ -13,22 +13,14 @@ defmodule IdentityPkiWeb.PageController do
       URI.decode(cert)
       |> X509.Certificate.from_pem!()
 
-    distinguished_name_signature = Certificate.dn_signature(cert)
-
-    {:ok, piv} = PivCac.find_or_create(distinguished_name_signature)
-
-    :ok = Certificate.validate_piv_cac_certificate(cert)
-
     token =
-      %{
-        subject: Certificate.rfc_2253_subject(cert),
-        issuer: Certificate.issuer(cert),
-        uuid: piv.uuid,
-        card_type: "piv",
-        auth_cert: Certificate.auth_cert?(cert),
-        nonce: nonce
-      }
-      |> IdentityPki.Token.box()
+      case Certificate.validate_piv_cac_certificate(cert) do
+        :ok ->
+          token_for_valid(cert, nonce)
+
+        error ->
+          token_for_error(cert, nonce, error)
+      end
 
     query = URI.encode_query(%{token: token})
     referrer = %{referrer_uri | query: query}
@@ -65,5 +57,30 @@ defmodule IdentityPkiWeb.PageController do
     referrer = header_referrer || param_referrer
 
     URI.parse(referrer)
+  end
+
+  defp token_for_valid(cert, nonce) do
+    distinguished_name_signature = Certificate.dn_signature(cert)
+
+    {:ok, piv} = PivCac.find_or_create(distinguished_name_signature)
+
+    %{
+      subject: Certificate.rfc_2253_subject(cert),
+      issuer: Certificate.issuer(cert),
+      uuid: piv.uuid,
+      card_type: "piv",
+      auth_cert: Certificate.auth_cert?(cert),
+      nonce: nonce
+    }
+    |> IdentityPki.Token.box()
+  end
+
+  defp token_for_error(cert, nonce, error) do
+    %{
+      error: error,
+      auth_cert: Certificate.auth_cert?(cert),
+      nonce: nonce
+    }
+    |> IdentityPki.Token.box()
   end
 end
