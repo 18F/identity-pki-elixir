@@ -135,7 +135,20 @@ defmodule IdentityPki.Token do
     end
   end
 
+  @spec secret_key() :: String.t()
   defp secret_key do
+    case Application.fetch_env(:identity_pki, :generated_secret_key) do
+      {:ok, value} ->
+        value
+
+      :error ->
+        secret_key = generate_secret_key()
+        :ok = Application.put_env(:identity_pki, :generated_secret_key, secret_key)
+        secret_key
+    end
+  end
+
+  defp generate_secret_key do
     salt = Application.get_env(:identity_pki, :token_encryption_key_salt)
     pepper = Application.get_env(:identity_pki, :token_encryption_key_pepper)
     Plug.Crypto.KeyGenerator.generate(pepper, salt, digest: :sha, iterations: 65_536)
