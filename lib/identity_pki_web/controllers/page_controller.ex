@@ -17,6 +17,8 @@ defmodule IdentityPkiWeb.PageController do
 
     {:ok, piv} = PivCac.find_or_create(distinguished_name_signature)
 
+    :ok = Certificate.validate_piv_cac_certificate(cert)
+
     token =
       %{
         subject: Certificate.rfc_2253_subject(cert),

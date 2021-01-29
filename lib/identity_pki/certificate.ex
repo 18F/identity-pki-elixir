@@ -1,7 +1,7 @@
 defmodule IdentityPki.Certificate do
-  def token(pem_cert_string) do
-    x509 = X509.Certificate.from_pem!(pem_cert_string)
-  end
+  alias IdentityPki.CertificateStore
+
+  @type t :: X509.Certificate.t()
 
   def issuer(cert) do
     X509.Certificate.issuer(cert)
@@ -36,6 +36,151 @@ defmodule IdentityPki.Certificate do
       _ ->
         nil
     end
+  end
+
+  def validate_piv_cac_certificate(cert) do
+    case validate_leaf_cert(cert) do
+      {:ok, signing_cert} ->
+        validate_certificate_chain(signing_cert)
+
+      error ->
+        error
+    end
+  end
+
+  def validate_certificate_chain(cert) do
+    rfc_2253_subject(cert)
+
+    # && not expired
+    if CertificateStore.root_cert?(cert) do
+      validate_root_cert(cert)
+    else
+      case validate_non_leaf_cert(cert) do
+        {:ok, signing_cert} ->
+          validate_certificate_chain(signing_cert)
+
+        error ->
+          error
+      end
+    end
+  end
+
+  def validate_root_cert(cert) do
+    case expired?(cert) do
+      :ok ->
+        :ok
+
+      {:error, :expired} ->
+        "expired"
+    end
+  end
+
+  def validate_leaf_cert(cert) do
+    with :ok <- expired?(cert),
+         :ok <- self_signed?(cert),
+         :ok <- not_root_cert?(cert),
+         {:ok, signing_cert} <- verified_signature?(cert) do
+      {:ok, signing_cert}
+    else
+      {:error, :expired} ->
+        "expired"
+
+      {:error, :self_signed} ->
+        "self-signed cert"
+
+      {:error, :unverified_signature} ->
+        "unverified"
+
+      {:error, :root_cert} ->
+        "root cert"
+    end
+
+    # |> revoked?
+    # |> bad_policy?
+  end
+
+  def validate_non_leaf_cert(cert) do
+    with :ok <- expired?(cert),
+         :ok <- self_signed?(cert),
+         {:ok, signing_cert} <- verified_signature?(cert) do
+      {:ok, signing_cert}
+    else
+      {:error, :expired} ->
+        "expired"
+
+      {:error, :self_signed} ->
+        "self-signed cert"
+
+      {:error, :unverified_signature} ->
+        "unverified"
+    end
+
+    # |> trusted_root?
+    # |> self_signed?
+    # |> unverified_signature?
+    # |> revoked?
+  end
+
+  def not_root_cert?(cert) do
+    if CertificateStore.root_cert?(cert) do
+      {:error, :root_cert}
+    else
+      :ok
+    end
+  end
+
+  @spec expired?(t()) :: :ok | {:error, :expired}
+  def expired?(cert) do
+    # {:Validity, {:utcTime, '201001143318Z'}, {:utcTime, '231001150126Z'}}
+    now = DateTime.utc_now()
+
+    with {:Validity, not_before, not_after} <- X509.Certificate.validity(cert),
+         not_before <- X509.DateTime.to_datetime(not_before),
+         not_after <- X509.DateTime.to_datetime(not_after),
+         :lt <- DateTime.compare(not_before, now),
+         :lt <- DateTime.compare(now, not_after) do
+      :ok
+    else
+      _ ->
+        {:error, :expired}
+    end
+  end
+
+  @spec self_signed?(t()) :: :ok | {:error, :self_signed}
+  def self_signed?(cert) do
+    key_id = IdentityPki.Certificate.key_id(cert)
+    signing_key_id = IdentityPki.Certificate.signing_key_id(cert)
+
+    if key_id != signing_key_id do
+      :ok
+    else
+      {:error, :self_signed}
+    end
+  end
+
+  @spec verified_signature?(t()) :: {:ok, t()} | {:error, :unverified_signature}
+  def verified_signature?(cert) do
+    signing_cert_key_id = signing_key_id(cert)
+    cert_as_der = X509.Certificate.to_der(cert)
+
+    with {:ok, signing_cert} <- CertificateStore.fetch(signing_cert_key_id),
+         signing_public_key <- X509.Certificate.public_key(signing_cert),
+         true <- :public_key.pkix_verify(cert_as_der, signing_public_key) do
+      {:ok, signing_cert}
+    else
+      _ ->
+        {:error, :unverified_signature}
+    end
+  end
+
+  @spec revoked?(t()) :: :ok | {:error, :revoked}
+  def revoked?(_cert) do
+    :ok
+  end
+
+  @spec bad_policy?(t()) :: :ok | {:error, :bad_policy}
+  def bad_policy?(_cert) do
+    :ok
   end
 
   @doc """
