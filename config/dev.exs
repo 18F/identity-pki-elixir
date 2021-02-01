@@ -26,7 +26,12 @@ config :identity_pki,
   token_encryption_key_pepper:
     "c6b4a68a3adf0ff2069d5240bb71532c7a8c0dbb77bba5f9070e2d8ab1ebcc918cc8d8cdbb04fa34ed71126fac3e02d9c85280ae0f7c42d22b678e3e5eb67cfe",
   verify_token_secret:
-    "ee7f20f44cdc2ba0c6830f70470d1d1d059e1279cdb58134db92b35947b1528ef5525ece5910cf4f2321ab989a618feea12ef95711dbc62b9601e8520a34ee12"
+    "ee7f20f44cdc2ba0c6830f70470d1d1d059e1279cdb58134db92b35947b1528ef5525ece5910cf4f2321ab989a618feea12ef95711dbc62b9601e8520a34ee12",
+  trusted_ca_root_certificate_ids: [
+    "49:74:BB:0C:5E:BA:7A:FE:02:54:EF:7B:A0:C6:95:C6:09:80:70:96",
+    "AD:0C:7A:75:5C:E5:F3:98:C4:79:98:0E:AC:28:FD:97:F4:E7:02:FC",
+    "BD:C1:B9:6B:4D:F4:1D:EC:30:90:BF:62:73:C0:84:33:F2:71:24:85"
+  ]
 
 # ## SSL Support
 #
